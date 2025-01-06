@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Script that displays listening ports
+check_requirements() {
+    if ! command -v "lsof" &> /dev/null; then
+        echo "Error: 'lsof' command not found"
+        exit 1
+    fi
+}
+
+# Function to display listening ports with program info
+display_listening_ports() {
+    echo "Listening Ports:"
+    echo "----------------"
+    echo "Protocol | Port | PID | Program"
+    echo "----------------"
+
+    # Using lsof to show listening ports
+    # -i: show network connections
+    # -P: don't convert port numbers to names
+    # -n: don't convert IP addresses to hostnames
+    lsof -i -P -n | grep "LISTEN" | \
+    awk '{
+        split($9, addr, ":")  # Split address:port
+        port = addr[length(addr)]  # Get port number
+        pid = $2  # Get PID
+        prog = $1  # Get program name
+        proto = tolower($8)  # Get protocol
+        printf "%-8s | %-5s | %s/%s\n", proto, port, pid, prog
+    }' | sort -n -k3
+
+    # Note: This script requires root/sudo privileges to see all program information
+    if [ "$EUID" -ne 0 ]; then
+        echo -e "\nNote: Run with sudo to see all program information"
+    fi
+}
+
+# Function to handle errors
+handle_error() {
+    echo "Error: $1"
+    exit 1
+}
+
+# Main execution
+main() {
+    check_requirements || handle_error "Requirements check failed"
+    display_listening_ports || handle_error "Failed to display listening ports"
+}
+
+# Run the script
+main
